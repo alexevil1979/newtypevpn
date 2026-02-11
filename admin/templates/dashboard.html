@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — ShadowTunnel Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <p class="subtitle">Server overview and monitoring</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon stat-icon-blue">&#9687;</div>
+        <div class="stat-info">
+            <span class="stat-value">{{ client_count }}</span>
+            <span class="stat-label">Connected Clients</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon stat-icon-green">&#9650;</div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_traffic.sent }}</span>
+            <span class="stat-label">Traffic Sent</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon stat-icon-purple">&#9660;</div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_traffic.received }}</span>
+            <span class="stat-label">Traffic Received</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon stat-icon-orange">&#9200;</div>
+        <div class="stat-info">
+            <span class="stat-value">{{ server_uptime }}</span>
+            <span class="stat-label">Server Uptime</span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Connected Clients</h2>
+        <button class="btn btn-sm" onclick="refreshClients()">Refresh</button>
+    </div>
+    <div class="card-body">
+        <table class="table" id="clients-table">
+            <thead>
+                <tr>
+                    <th>Session ID</th>
+                    <th>Remote Address</th>
+                    <th>Tunnel IP</th>
+                    <th>Uptime</th>
+                    <th>Traffic</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td><code>{{ client.session_id[:16] }}...</code></td>
+                    <td>{{ client.remote_addr or 'N/A' }}</td>
+                    <td>{{ client.tunnel_ip or 'N/A' }}</td>
+                    <td>{{ client.uptime_seconds }}s</td>
+                    <td>
+                        <span class="traffic-up">{{ client.bytes_sent }}</span> /
+                        <span class="traffic-down">{{ client.bytes_received }}</span>
+                    </td>
+                    <td><span class="badge badge-{{ client.state }}">{{ client.state }}</span></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No clients connected</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Server Actions</h2>
+    </div>
+    <div class="card-body actions-grid">
+        <button class="btn btn-warning" onclick="restartService()">Restart Service</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function refreshClients() {
+    try {
+        const resp = await fetch('/api/clients');
+        if (resp.ok) {
+            location.reload();
+        }
+    } catch (e) {
+        console.error('Failed to refresh:', e);
+    }
+}
+
+async function restartService() {
+    if (!confirm('Are you sure you want to restart the service?')) return;
+    try {
+        const resp = await fetch('/api/service/restart', { method: 'POST' });
+        const data = await resp.json();
+        alert(data.message || 'Service restarted');
+    } catch (e) {
+        alert('Failed to restart service: ' + e.message);
+    }
+}
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+    fetch('/api/status').then(r => r.json()).then(data => {
+        document.querySelector('.stat-value').textContent = data.clients_connected;
+    }).catch(() => {});
+}, 30000);
+</script>
+{% endblock %}

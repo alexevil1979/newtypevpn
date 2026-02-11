@@ -1,0 +1,83 @@
+# ═══════════════════════════════════════════════════════════
+# ShadowTunnel Server Configuration
+# ═══════════════════════════════════════════════════════════
+
+server:
+  # IP-адрес для прослушивания (0.0.0.0 = все интерфейсы)
+  listen_addr: "0.0.0.0"
+  # UDP-порт сервера
+  listen_port: 51820
+  # Максимальное количество одновременных клиентов
+  max_clients: 256
+  # Уровень логирования: DEBUG, INFO, WARNING, ERROR
+  log_level: "INFO"
+  # Файл логов (пусто = stdout)
+  log_file: "/var/log/shadowtunnel/server.log"
+
+# ── Сетевые настройки туннеля ─────────────────────────────
+tunnel:
+  # Подсеть для клиентских IP
+  subnet: "10.8.0.0/24"
+  # IP сервера в туннеле
+  server_ip: "10.8.0.1"
+  # DNS-серверы для клиентов
+  dns:
+    - "1.1.1.1"
+    - "8.8.8.8"
+  # MTU туннеля
+  mtu: 1400
+
+# ── NAT и маршрутизация ──────────────────────────────────
+nat:
+  # Включить NAT (IP masquerade)
+  enabled: true
+  # Внешний интерфейс для NAT
+  interface: "eth0"
+  # Разрешить маршрутизацию между клиентами
+  allow_client_to_client: false
+
+# ── Криптография ──────────────────────────────────────────
+crypto:
+  # Путь к приватному ключу сервера (Ed25519)
+  private_key_file: "/etc/shadowtunnel/server.key"
+  # Путь к публичному ключу сервера
+  public_key_file: "/etc/shadowtunnel/server.pub"
+  # Интервал ротации ключей (секунды)
+  key_rotation_interval: 1800
+
+# ── Обфускация ────────────────────────────────────────────
+obfuscation:
+  # Режим: none, random_padding, tls_mimicry
+  mode: "random_padding"
+
+# ── Аутентификация клиентов ───────────────────────────────
+auth:
+  # Режим: shared_key, certificate
+  mode: "shared_key"
+  # Список авторизованных клиентов (для shared_key)
+  clients:
+    - name: "client1"
+      # Публичный ключ клиента (Ed25519, base64)
+      public_key: ""
+    # - name: "client2"
+    #   public_key: ""
+
+# ── Веб-панель администратора ─────────────────────────────
+admin:
+  # Включить веб-панель
+  enabled: true
+  # Адрес прослушивания (127.0.0.1 = только localhost)
+  listen_addr: "127.0.0.1"
+  # Порт
+  listen_port: 8443
+  # HTTPS
+  ssl:
+    enabled: true
+    cert_file: "/etc/shadowtunnel/admin.crt"
+    key_file: "/etc/shadowtunnel/admin.key"
+  # Учётные данные администратора
+  # Пароль хранится как bcrypt-хеш
+  username: "admin"
+  password_hash: ""
+  # JWT секрет (генерируется автоматически при установке)
+  jwt_secret: ""

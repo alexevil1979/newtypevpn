@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Clients — ShadowTunnel Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Client Management</h1>
+    <p class="subtitle">Manage authorized clients and keys</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Add Client Key</h2>
+    </div>
+    <div class="card-body">
+        <form id="add-client-form" class="inline-form">
+            <div class="form-group">
+                <label for="client-name">Client Name</label>
+                <input type="text" id="client-name" placeholder="e.g. my-laptop" required>
+            </div>
+            <div class="form-group">
+                <label for="client-key">Public Key (Base64)</label>
+                <input type="text" id="client-key" placeholder="Ed25519 public key..." required>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Client</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Connected Sessions</h2>
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Session ID</th>
+                    <th>Remote Address</th>
+                    <th>Tunnel IP</th>
+                    <th>State</th>
+                    <th>Packets Sent</th>
+                    <th>Packets Received</th>
+                    <th>Key Rotations</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td><code>{{ client.session_id[:16] }}...</code></td>
+                    <td>{{ client.remote_addr or 'N/A' }}</td>
+                    <td>{{ client.tunnel_ip or 'N/A' }}</td>
+                    <td><span class="badge badge-{{ client.state }}">{{ client.state }}</span></td>
+                    <td>{{ client.packets_sent }}</td>
+                    <td>{{ client.packets_received }}</td>
+                    <td>{{ client.rotation_counter }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" 
+                                onclick="disconnectClient('{{ client.session_id }}')">
+                            Disconnect
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted">No active sessions</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('add-client-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('client-name').value;
+    const key = document.getElementById('client-key').value;
+    
+    try {
+        const resp = await fetch('/api/clients/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, public_key: key}),
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+            alert(data.message);
+            e.target.reset();
+        } else {
+            alert('Error: ' + (data.detail || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Failed: ' + err.message);
+    }
+});
+
+async function disconnectClient(sessionId) {
+    if (!confirm('Disconnect this client?')) return;
+    alert('Client will be disconnected on next keepalive timeout.');
+}
+</script>
+{% endblock %}

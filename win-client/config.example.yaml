@@ -1,0 +1,32 @@
+# ═══════════════════════════════════════════════════════════
+# ShadowTunnel Client Configuration Example
+# Скопируйте в config.yaml и отредактируйте
+# ═══════════════════════════════════════════════════════════
+
+server:
+  # IP или домен VPN-сервера
+  address: "your-server-ip"
+  # UDP-порт сервера
+  port: 51820
+  # DNS-серверы
+  dns:
+    - "1.1.1.1"
+    - "8.8.8.8"
+
+client:
+  # Имя клиента (должно совпадать с сервером)
+  name: "myclient"
+  # Режим обфускации: none, random_padding, tls_mimicry
+  obfuscation: "random_padding"
+  # Автоматическое переподключение
+  auto_reconnect: true
+  # Интервал keepalive (секунды)
+  keepalive_interval: 25
+  # Уровень логирования
+  log_level: "INFO"
+
+crypto:
+  # Публичный ключ сервера (base64)
+  server_public_key: ""
+  # Путь к приватному ключу клиента
+  private_key_file: ""

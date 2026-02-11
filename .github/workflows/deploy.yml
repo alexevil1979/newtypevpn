@@ -1,0 +1,157 @@
+name: ShadowTunnel CI/CD
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: '3.11'
+  DOCKER_IMAGE: shadowtunnel-server
+
+jobs:
+  # ── Тестирование ────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r server/requirements.txt
+          pip install -r admin/requirements.txt
+          pip install -r tests/requirements.txt
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --tb=short --junitxml=test-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.xml
+
+  # ── Линтинг ─────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linters
+        run: pip install ruff
+
+      - name: Run ruff
+        run: ruff check shared/ server/ admin/ --ignore E501
+
+  # ── Сборка Docker-образа ────────────────────────────────
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Сборка Windows-клиента ──────────────────────────────
+  build-windows:
+    name: Build Windows Client
+    runs-on: windows-latest
+    needs: [test]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r win-client/requirements.txt
+          pip install -r server/requirements.txt
+
+      - name: Build with PyInstaller
+        run: |
+          cd win-client
+          pyinstaller --onefile --windowed --name ShadowTunnel --add-data "../shared;shared" main.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShadowTunnel-Win
+          path: win-client/dist/ShadowTunnel.exe
+
+  # ── Создание релиза ─────────────────────────────────────
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-windows, docker]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ShadowTunnel-Win
+          path: ./release/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/ShadowTunnel.exe
+          body: |
+            ## ShadowTunnel ${{ github.ref_name }}
+            
+            ### Downloads
+            - **Windows**: `ShadowTunnel.exe`
+            - **Server (Docker)**: `ghcr.io/${{ github.repository }}:${{ github.ref_name }}`
+            - **Server (Manual)**: Clone repo, run `sudo ./scripts/install.sh`
+            
+            ### Changes
+            See commits since last release.
+          draft: false
+          prerelease: false

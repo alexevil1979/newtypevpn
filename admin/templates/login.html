@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Login — ShadowTunnel Admin{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="login-logo">&#9783;</div>
+            <h1>ShadowTunnel</h1>
+            <p>Admin Panel</p>
+        </div>
+        
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+        
+        <form method="post" action="/login" class="login-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" 
+                       required autocomplete="username" autofocus
+                       placeholder="admin">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" 
+                       required autocomplete="current-password"
+                       placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;">
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">Login</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

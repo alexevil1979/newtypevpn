@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  shadowtunnel:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: shadowtunnel-server
+    restart: unless-stopped
+    
+    # Для работы с TUN-интерфейсом
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    
+    # Sysctls для NAT
+    sysctls:
+      - net.ipv4.ip_forward=1
+    
+    ports:
+      - "51820:51820/udp"   # VPN tunnel
+      - "8443:8443"          # Admin panel
+    
+    volumes:
+      - ./config:/etc/shadowtunnel          # Конфигурация
+      - shadowtunnel-logs:/var/log/shadowtunnel  # Логи
+    
+    environment:
+      - SHADOWTUNNEL_CONFIG=/etc/shadowtunnel/config.yaml
+      - PYTHONUNBUFFERED=1
+    
+    # Ограничения ресурсов
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 128M
+    
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  shadowtunnel-logs:

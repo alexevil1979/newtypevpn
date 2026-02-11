@@ -1,0 +1,29 @@
+[Unit]
+Description=ShadowTunnel VPN Server
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/shadowtunnel
+ExecStart=/opt/shadowtunnel/venv/bin/python -m server.main --config /etc/shadowtunnel/config.yaml
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+LimitNOFILE=65535
+
+# Безопасность
+NoNewPrivileges=no
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/shadowtunnel /etc/shadowtunnel /dev/net/tun
+PrivateTmp=true
+
+# Переменные окружения
+Environment=PYTHONPATH=/opt/shadowtunnel
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
